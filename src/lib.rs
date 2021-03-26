@@ -52,10 +52,25 @@ struct State {
 ///   the exact problem
 pub const fn generate_response(secret_key: &[u8], challenge: &[u8]) -> Result<Output, Error> {
     match generate_state(secret_key, challenge) {
-        Ok(_state) => Ok(Output {
-            buffer: [0; 88],
-            len: 0,
-        }),
+        Ok(state) => {
+            let num_src_buffers = state.len / 3 + ((state.len % 3 > 0) as usize);
+            let mut output = Output {
+                buffer: [0; 88],
+                len: num_src_buffers * 4,
+            };
+            let mut i = 0;
+            while i < num_src_buffers {
+                let a = i * 3;
+                let b = i * 4;
+                let encoded = encode([state.buffer[a], state.buffer[a + 1], state.buffer[a + 2]]);
+                output.buffer[b] = encoded[0];
+                output.buffer[b + 1] = encoded[1];
+                output.buffer[b + 2] = encoded[2];
+                output.buffer[b + 3] = encoded[3];
+                i += 1;
+            }
+            Ok(output)
+        }
         Err(e) => Err(e),
     }
 }
@@ -148,4 +163,20 @@ const fn check_challenge(challenge: &[u8]) -> Result<(), InvalidChallenge> {
     } else {
         Ok(())
     }
+}
+
+const fn encode(src: [u8; 3]) -> [u8; 4] {
+    const ENCODE_TABLE: [u8; 64] = [
+        b'A', b'B', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J', b'K', b'L', b'M', b'N', b'O',
+        b'P', b'Q', b'R', b'S', b'T', b'U', b'V', b'W', b'X', b'Y', b'Z', b'a', b'b', b'c', b'd',
+        b'e', b'f', b'g', b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o', b'p', b'q', b'r', b's',
+        b't', b'u', b'v', b'w', b'x', b'y', b'z', b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7',
+        b'8', b'9', b'+', b'/',
+    ];
+    [
+        ENCODE_TABLE[(src[0] >> 2) as usize],
+        ENCODE_TABLE[(((src[0] & 0b11) << 4) | (src[1] >> 4)) as usize],
+        ENCODE_TABLE[(((src[1] & 0b1111) << 2) | (src[2] >> 6)) as usize],
+        ENCODE_TABLE[(src[2] & 0b11_1111) as usize],
+    ]
 }
