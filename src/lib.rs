@@ -44,9 +44,48 @@ pub struct Output {
 ///   problem
 /// * `Error::InvalidChallenge` if the challenge is invalid; the inner `InvalidChallenge` specifies
 ///   the exact problem
-pub const fn generate_response(_secret_key: &[u8], _challenge: &[u8]) -> Result<Output, Error> {
-    Ok(Output {
-        buffer: [0; 88],
-        len: 0,
-    })
+pub const fn generate_response(secret_key: &[u8], challenge: &[u8]) -> Result<Output, Error> {
+    if let Err(e) = check_key(secret_key) {
+        Err(Error::InvalidKey(e))
+    } else if let Err(e) = check_challenge(challenge) {
+        Err(Error::InvalidChallenge(e))
+    } else {
+        Ok(Output {
+            buffer: [0; 88],
+            len: 0,
+        })
+    }
+}
+
+const fn has_interior_nul(src: &[u8]) -> bool {
+    let mut i = 0;
+    while i < src.len() {
+        if src[i] == 0 {
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
+
+const fn check_key(key: &[u8]) -> Result<(), InvalidKey> {
+    if key.is_empty() {
+        Err(InvalidKey::ZeroLength)
+    } else if key.len() > 256 {
+        Err(InvalidKey::TooLong)
+    } else if has_interior_nul(key) {
+        Err(InvalidKey::InteriorNul)
+    } else {
+        Ok(())
+    }
+}
+
+const fn check_challenge(challenge: &[u8]) -> Result<(), InvalidChallenge> {
+    if challenge.len() > 64 {
+        Err(InvalidChallenge::TooLong)
+    } else if has_interior_nul(challenge) {
+        Err(InvalidChallenge::InteriorNul)
+    } else {
+        Ok(())
+    }
 }
