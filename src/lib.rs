@@ -17,3 +17,12 @@
     rustdoc,
     unused
 )]
+
+#[cfg(not(feature = "std"))]
+use core as std_crate;
+#[cfg(feature = "std")]
+use std as std_crate;
+
+mod error;
+
+pub use error::{Error, InvalidChallenge, InvalidKey};
