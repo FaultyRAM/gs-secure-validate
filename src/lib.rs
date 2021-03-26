@@ -156,6 +156,12 @@ impl Deref for Output {
     }
 }
 
+impl Display for Output {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl State {
     #[allow(clippy::clippy::manual_swap)] // False positive; `mem::swap` is not `const`.
     const fn generate(key: &[u8], challenge: &[u8]) -> Result<Self, Error> {
