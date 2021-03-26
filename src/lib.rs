@@ -17,6 +17,7 @@
     rustdoc,
     unused
 )]
+#![allow(clippy::clippy::must_use_candidate)]
 
 #[cfg(not(feature = "std"))]
 use core as std_crate;
@@ -25,7 +26,12 @@ use std as std_crate;
 
 #[cfg(feature = "std")]
 use std_crate::error;
-use std_crate::fmt::{self, Display, Formatter};
+use std_crate::{
+    borrow::Borrow,
+    fmt::{self, Display, Formatter},
+    ops::Deref,
+    str,
+};
 
 /// The generated response to a secure/validate challenge.
 #[derive(Clone, Copy, Debug)]
@@ -104,6 +110,49 @@ impl Output {
             }
             Err(e) => Err(e),
         }
+    }
+
+    /// Returns the generated response as a string slice.
+    pub fn as_str(&self) -> &str {
+        // SAFETY: `encode` guarantees that this will be a valid ASCII string.
+        unsafe { str::from_utf8_unchecked(self.as_bytes()) }
+    }
+
+    /// Returns the generated response as a byte slice.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buffer[..self.len]
+    }
+}
+
+impl AsRef<[u8]> for Output {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+impl AsRef<str> for Output {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Borrow<[u8]> for Output {
+    fn borrow(&self) -> &[u8] {
+        self.as_bytes()
+    }
+}
+
+impl Borrow<str> for Output {
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl Deref for Output {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
     }
 }
 
